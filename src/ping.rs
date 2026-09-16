@@ -1,34 +1,25 @@
-use std::{
-    io::{Read, Write},
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
 };
 
-pub fn read_stream(mut stream: TcpStream) -> std::io::Result<()> {
-    let mut buf = [0u8; 1024];
+use anyhow::Result;
 
-    loop {
-        match stream.read(&mut buf) {
-            Ok(0) => {
-                eprintln!("Connection closed by the peer");
-                break;
-            }
-            Ok(bs) => {
-                let data = &buf[..bs];
-                match data {
-                    b"PING\n" => {
-                        stream.write(b"+PONG\r\n").unwrap();
-                    }
-                    _o => {
-                        stream.write(b"+PONG\r\n").unwrap();
-                    }
-                }
-                println!("Received {bs} bytes: {data:?}");
-            }
-            Err(e) => {
-                eprintln!("Error reading stream: {e}");
-                return Err(e);
+pub async fn read_stream(stream: &mut TcpStream) -> Result<()> {
+    let mut reader = BufReader::new(stream);
+    let mut buf = Vec::new();
+
+    while reader.read_until(b'\n', &mut buf).await? > 0 {
+        println!("Received {buf:?}");
+
+        let cmd = std::str::from_utf8(&buf)?;
+        match &cmd {
+            _o => {
+                reader.get_mut().write_all(b"+PONG\r\n").await?;
             }
         }
+
+        buf.clear();
     }
 
     Ok(())

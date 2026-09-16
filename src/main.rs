@@ -1,5 +1,6 @@
 use codecrafters_redis::run;
 
-fn main() {
-    run::listen();
+#[tokio::main]
+async fn main() {
+    run::listen().await;
 }

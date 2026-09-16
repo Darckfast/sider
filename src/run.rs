@@ -1,24 +1,23 @@
-#![allow(unused_imports)]
-use std::net::TcpListener;
+use tokio::net::TcpListener;
 
 use crate::ping::read_stream;
 
-pub fn listen() {
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    println!("Logs from your program will appear here!");
+pub async fn listen() {
+    let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
+    println!("listening to :6379");
 
-    // Uncomment the code below to pass the first stage
-    let listener = TcpListener::bind("127.0.0.1:6379").unwrap();
-
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
+    loop {
+        match listener.accept().await {
+            Ok((mut stream, _)) => {
                 println!("accepted new connection");
-                read_stream(stream).unwrap();
+                tokio::spawn(async move {
+                    match read_stream(&mut stream).await {
+                        Ok(_) => (),
+                        Err(e) => eprintln!("error processing connection {e}"),
+                    };
+                });
             }
-            Err(e) => {
-                println!("error: {}", e);
-            }
-        }
+            Err(e) => eprintln!("error: {e}"),
+        };
     }
 }
