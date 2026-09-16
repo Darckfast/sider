@@ -18,7 +18,9 @@ pub fn read_stream(mut stream: TcpStream) -> std::io::Result<()> {
                     b"PING\n" => {
                         stream.write(b"+PONG\r\n").unwrap();
                     }
-                    _o => {}
+                    _o => {
+                        stream.write(b"+PONG\r\n").unwrap();
+                    }
                 }
                 println!("Received {bs} bytes: {data:?}");
             }
