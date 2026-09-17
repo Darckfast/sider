@@ -1,47 +1,71 @@
-use tokio::{
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    net::TcpStream,
-};
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, BufReader};
 
 use anyhow::Result;
 
-#[derive(Debug)]
-enum DataType {
-    Str(String),
+#[derive(Debug, Clone, PartialEq)]
+pub enum DataType {
+    SimpleStr(String),
+    BulkString(String),
     Int(i64),
+    NullStr,
 }
 
-pub async fn read_stream(stream: &mut TcpStream) -> Result<()> {
+pub async fn read_stream<Reader>(stream: Reader) -> Result<Vec<DataType>>
+where
+    Reader: AsyncRead + Unpin,
+{
     let mut reader = BufReader::new(stream);
-    let mut buf = Vec::new();
+    let mut buf = String::new();
     let mut con: Vec<DataType> = Vec::new();
+    let mut expected: usize = 0;
+    let mut count: usize = 0;
 
-    while reader.read_until(b'\n', &mut buf).await? > 0 {
-        buf.truncate(buf.len() - 2);
-        println!("Received {buf:?}");
-
-        match &buf[0] {
-            b'*' => {
-                let raw_data = std::str::from_utf8(&buf[1..]).expect("should have string");
-                let len: i64 = raw_data.parse().expect("should be i64");
-                println!("array: len {len}");
-            }
-            b'$' => {
-                let mut d_buf = Vec::new();
-                reader.read_until(b'\n', &mut d_buf).await?;
-                let val = std::str::from_utf8(&d_buf)?;
-                con.push(DataType::Str(val.to_string()));
-                println!("bulk string: {val}");
-            }
-            _ => {
-                let val = std::str::from_utf8(&buf)?;
-                eprintln!("{val}");
-            }
+    loop {
+        buf.clear();
+        let br = reader.read_line(&mut buf).await?;
+        if br == 0 {
+            break;
         }
 
-        buf.clear();
+        buf = buf.trim().to_string();
+        if buf.len() == 0 {
+            break;
+        }
+
+        match buf.chars().nth(0) {
+            Some(ch) => match ch {
+                '*' => {
+                    let data = &buf[1..].to_string();
+                    let len: usize = data.parse().expect("should have len");
+                    expected += len;
+                    continue;
+                }
+                '$' => {
+                    let data = &buf[1..].to_string();
+                    let len: usize = data.parse().expect("should have len");
+                    let mut data_buf = vec![0u8; len];
+
+                    reader.read_exact(&mut data_buf).await?;
+                    let val = std::str::from_utf8(&data_buf)?;
+
+                    con.push(DataType::BulkString(val.to_string()));
+
+                    let mut trash = [0u8; 2];
+                    reader.read_exact(&mut trash).await?;
+
+                    count += 1;
+                }
+                _ => {
+                    eprintln!("unmapped: {buf}");
+                }
+            },
+            None => (),
+        }
+
+        if count == expected {
+            break;
+        }
     }
 
-    dbg!(con);
-    Ok(())
+    Ok(con)
 }
