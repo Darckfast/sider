@@ -10,7 +10,7 @@ use crate::cmd::MemDb;
 pub type ExpDb = Arc<Mutex<Vec<(String, Instant)>>>;
 
 pub async fn background_scheduler(mem_db: MemDb, exp_db: ExpDb) {
-    let mut inter = interval(Duration::from_millis(100));
+    let mut inter = interval(Duration::from_mins(1));
     inter.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
     loop {

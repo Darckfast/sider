@@ -24,9 +24,8 @@ pub fn exec_cmd(cmd_seq: &[DataType], mem_db: MemDb, exp_db: ExpDb) -> Result<Ve
                 let mut map = mem_db.lock().unwrap();
                 map.insert(key.to_string(), cmd_seq[2].clone());
 
-                match cmd_seq.get(3) {
+                let expiry = match cmd_seq.get(3) {
                     Some(arg) if *arg == DataType::BulkString("EX".to_string()) => {
-                        let mut exp = exp_db.lock().unwrap();
                         let exp_val: u64 = match cmd_seq.get(4) {
                             Some(a) => match a {
                                 DataType::Int(v) => *v as u64,
@@ -36,17 +35,32 @@ pub fn exec_cmd(cmd_seq: &[DataType], mem_db: MemDb, exp_db: ExpDb) -> Result<Ve
                             None => 0,
                         };
 
-                        exp.push((
-                            key.to_string(),
-                            Instant::now() + Duration::from_secs(exp_val),
-                        ));
+                        Some(Duration::from_secs(exp_val))
                     }
-                    _ => (),
+                    Some(arg) if *arg == DataType::BulkString("PX".to_string()) => {
+                        let exp_val: u64 = match cmd_seq.get(4) {
+                            Some(a) => match a {
+                                DataType::Int(v) => *v as u64,
+                                DataType::BulkString(bs) => bs.parse().unwrap(),
+                                _ => 0,
+                            },
+                            None => 0,
+                        };
+
+                        Some(Duration::from_millis(exp_val))
+                    }
+                    _ => None,
+                };
+
+                if let Some(exp_val) = expiry {
+                    let mut exp = exp_db.lock().unwrap();
+                    exp.push((key.to_string(), Instant::now() + exp_val));
                 }
+
                 Ok(vec![DataType::SimpleStr("OK".to_string())])
             }
             "GET" => {
-                let map = mem_db.lock().unwrap();
+                let mut map = mem_db.lock().unwrap();
                 let key = match &cmd_seq[1] {
                     DataType::BulkString(bs) => bs,
                     _ => bail!("wrong key value type"),
@@ -56,6 +70,19 @@ pub fn exec_cmd(cmd_seq: &[DataType], mem_db: MemDb, exp_db: ExpDb) -> Result<Ve
                     Some(v) => v.clone(),
                     None => DataType::NullStr,
                 };
+
+                let mut exp = exp_db.lock().unwrap();
+                let is_expired = exp.iter().find(|(k, v)| k == key && *v >= Instant::now());
+
+                //passive
+                match is_expired {
+                    Some(_) => {
+                        let _ = map.remove(key);
+                        exp.retain(|(k, _)| k != key);
+                        return Ok(vec![DataType::NullStr]);
+                    }
+                    None => (),
+                }
 
                 Ok(vec![val])
             }
