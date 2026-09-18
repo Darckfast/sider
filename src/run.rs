@@ -51,6 +51,7 @@ pub async fn listen() {
                                 DataType::Int(v) => {
                                     format!(":{v}{SEP}")
                                 }
+                                _ => todo!("todo"),
                             };
 
                             writer.write_all(data.as_bytes()).await.unwrap();

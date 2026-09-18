@@ -8,6 +8,7 @@ pub enum DataType {
     BulkString(String),
     Int(i64),
     NullStr,
+    List(Vec<DataType>),
 }
 
 pub async fn read_stream<Reader>(stream: Reader) -> Result<Vec<DataType>>

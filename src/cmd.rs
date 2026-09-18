@@ -74,7 +74,7 @@ pub fn exec_cmd(cmd_seq: &[DataType], mem_db: MemDb, exp_db: ExpDb) -> Result<Ve
                 let mut exp = exp_db.lock().unwrap();
                 let is_expired = exp.iter().find(|(k, v)| k == key && *v >= Instant::now());
 
-                //passive
+                // passive
                 match is_expired {
                     Some(_) => {
                         let _ = map.remove(key);
@@ -85,6 +85,29 @@ pub fn exec_cmd(cmd_seq: &[DataType], mem_db: MemDb, exp_db: ExpDb) -> Result<Ve
                 }
 
                 Ok(vec![val])
+            }
+            "RPUSH" => {
+                let key = match &cmd_seq[1] {
+                    DataType::BulkString(bs) => bs,
+                    _ => bail!("wrong key value type"),
+                };
+
+                let mut map = mem_db.lock().unwrap();
+                let entry = map
+                    .entry(key.to_string())
+                    .and_modify(|e| match e {
+                        DataType::List(l) => {
+                            l.append(&mut cmd_seq[2..].to_vec());
+                        }
+                        _ => (),
+                    })
+                    .or_insert(DataType::List(cmd_seq[2..].to_vec()));
+
+                if let DataType::List(l) = entry {
+                    Ok(vec![DataType::Int(l.len() as i64)])
+                } else {
+                    Ok(vec![])
+                }
             }
             cmd => {
                 eprintln!("unmapped cmd: {cmd}");
