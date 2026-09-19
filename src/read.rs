@@ -19,7 +19,6 @@ where
     let mut buf = String::new();
     let mut con: Vec<DataType> = Vec::new();
     let mut expected: usize = 0;
-    let mut count: usize = 0;
 
     loop {
         buf.clear();
@@ -33,17 +32,20 @@ where
             break;
         }
 
-        match buf.chars().nth(0) {
-            Some(ch) => match ch {
+        if let Some(ch) = buf.chars().nth(0) {
+            match ch {
                 '*' => {
                     let data = &buf[1..].to_string();
-                    let len: usize = data.parse().expect("should have len");
+                    let len: usize = data
+                        .parse()
+                        .expect("buffer has invalid RESP data - expected length after *");
                     expected += len;
-                    continue;
                 }
                 '$' => {
                     let data = &buf[1..].to_string();
-                    let len: usize = data.parse().expect("should have len");
+                    let len: usize = data
+                        .parse()
+                        .expect("buffer has invalid RESP data - expect length after $");
                     let mut data_buf = vec![0u8; len];
 
                     reader.read_exact(&mut data_buf).await?;
@@ -54,16 +56,15 @@ where
                     let mut trash = [0u8; 2];
                     reader.read_exact(&mut trash).await?;
 
-                    count += 1;
+                    expected -= 1;
                 }
-                _ => {
-                    eprintln!("unmapped: {buf}");
+                o => {
+                    eprintln!("unmapped operator: {o} {buf}");
                 }
-            },
-            None => (),
+            }
         }
 
-        if count == expected {
+        if expected == 0 {
             break;
         }
     }
