@@ -11,19 +11,32 @@ pub fn rpush(input_seq: &[DataType], mem_db: MemDb, _exp_db: ExpDb) -> Result<Da
     let vals = match map.get(key) {
         Some(e) => match e {
             DataType::List(l) => {
-                let idxs = input_seq[2..].iter().map(|v| match v {
-                    DataType::Int(v) => *v,
-                    DataType::BulkString(bs) => bs.parse().unwrap(),
-                    _ => 0,
-                });
-                let mut vals: Vec<DataType> = Vec::new();
-                for idx in idxs {
-                    if let Some(v) = l.get(idx as usize) {
-                        vals.push(v.clone());
-                    }
+                let mut idxs: Vec<i64> = input_seq[2..]
+                    .iter()
+                    .map(|v| match v {
+                        DataType::Int(v) => *v,
+                        DataType::BulkString(bs) => bs.parse().unwrap(),
+                        _ => 0,
+                    })
+                    .collect();
+
+                if idxs[1] > l.len() as i64 - 1 {
+                    idxs[1] = l.len() as i64 - 1;
                 }
 
-                DataType::List(vals)
+                if idxs[0] < 0 {
+                    idxs[0] += l.len() as i64;
+                }
+
+                if idxs[1] < 0 {
+                    idxs[1] += l.len() as i64;
+                }
+
+                if idxs[0] > idxs[1] {
+                    DataType::List(vec![])
+                } else {
+                    DataType::List(l[idxs[0] as usize..=idxs[1] as usize].to_vec())
+                }
             }
             _ => DataType::List(vec![]),
         },

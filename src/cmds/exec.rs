@@ -13,6 +13,7 @@ pub fn exec(input_seq: &[DataType], mem_db: MemDb, exp_db: ExpDb) -> Result<Data
                 "SET" => cmds::set::set(input_seq, mem_db, exp_db)?,
                 "GET" => cmds::get::get(input_seq, mem_db, exp_db)?,
                 "RPUSH" => cmds::rpush::rpush(input_seq, mem_db, exp_db)?,
+                "LPUSH" => cmds::lpush::lpush(input_seq, mem_db, exp_db)?,
                 "LRANGE" => cmds::lrange::rpush(input_seq, mem_db, exp_db)?,
                 cmd => bail!("command: {cmd} not supported"),
             };

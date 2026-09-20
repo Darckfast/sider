@@ -31,7 +31,18 @@ pub fn set(input_seq: &[DataType], mem_db: MemDb, exp_db: ExpDb) -> Result<DataT
         };
 
         let mut exp = exp_db.lock().unwrap();
-        exp.push((key.to_string(), Instant::now() + delay));
+        let mut updated = false;
+        for (k, ts) in &mut exp.iter_mut() {
+            if key == k {
+                *ts = Instant::now() + delay;
+                updated = true;
+                break;
+            }
+        }
+
+        if !updated {
+            exp.push((key.to_string(), Instant::now() + delay));
+        }
     }
 
     Ok(DataType::SimpleStr("OK".to_string()))

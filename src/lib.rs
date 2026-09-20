@@ -7,6 +7,7 @@ mod cmds {
     mod echo;
     pub mod exec;
     mod get;
+    mod lpush;
     mod lrange;
     mod ping;
     mod rpush;
