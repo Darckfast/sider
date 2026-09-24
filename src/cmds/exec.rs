@@ -1,22 +1,31 @@
-use crate::{cmd::MemDb, cmds, expiry::ExpDb, read::DataType};
+use std::sync::Arc;
+
+use crate::{
+    cmds::{self, state::MemDb},
+    read::DataType,
+};
 use anyhow::{Result, bail};
 
-pub fn exec(input_seq: &[DataType], mem_db: MemDb, exp_db: ExpDb) -> Result<DataType> {
+pub fn exec(input_seq: &[DataType], mem_db: Arc<MemDb>) -> Result<DataType> {
     let cmd = input_seq
         .first()
         .ok_or(anyhow::Error::msg("RESP data is empty"))?;
     match cmd {
         DataType::BulkString(bs) => {
             let data = match bs.to_uppercase().as_str() {
-                "ECHO" => cmds::echo::echo(input_seq, mem_db, exp_db),
-                "PING" => cmds::ping::ping(input_seq, mem_db, exp_db),
-                "SET" => cmds::set::set(input_seq, mem_db, exp_db)?,
-                "GET" => cmds::get::get(input_seq, mem_db, exp_db)?,
-                "RPUSH" => cmds::rpush::rpush(input_seq, mem_db, exp_db)?,
-                "LPUSH" => cmds::lpush::lpush(input_seq, mem_db, exp_db)?,
-                "LRANGE" => cmds::lrange::rpush(input_seq, mem_db, exp_db)?,
-                "LLEN" => cmds::llen::llen(input_seq, mem_db, exp_db)?,
-                cmd => bail!("command: {cmd} not supported"),
+                "ECHO" => cmds::echo::echo(input_seq, mem_db),
+                "PING" => cmds::ping::ping(input_seq, mem_db),
+                "SET" => cmds::set::set(input_seq, mem_db)?,
+                "GET" => cmds::get::get(input_seq, mem_db)?,
+                "RPUSH" => cmds::rpush::rpush(input_seq, mem_db)?,
+                "LPUSH" => cmds::lpush::lpush(input_seq, mem_db)?,
+                "LRANGE" => cmds::lrange::lrange(input_seq, mem_db)?,
+                "LLEN" => cmds::llen::llen(input_seq, mem_db)?,
+                "LPOP" => cmds::lpop::lpop(input_seq, mem_db)?,
+                cmd => {
+                    dbg!(input_seq);
+                    bail!("command {cmd} not supported")
+                }
             };
 
             Ok(data)

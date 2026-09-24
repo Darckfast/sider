@@ -1,13 +1,34 @@
-use crate::{cmd::MemDb, expiry::ExpDb, read::DataType};
+use std::sync::Arc;
+
+use crate::{cmds::state::MemDb, read::DataType};
 use anyhow::{Result, bail};
 
-pub fn rpush(input_seq: &[DataType], mem_db: MemDb, _exp_db: ExpDb) -> Result<DataType> {
+impl MemDb {
+    pub fn lrange(&self, key: &str, start: i64, end: i64) -> DataType {
+        let map = self.map.lock().unwrap();
+        match map.get(key) {
+            Some(e) => match e {
+                DataType::List(list) => {
+                    if start > end {
+                        DataType::EmptyList
+                    } else {
+                        DataType::List(list[start as usize..=end as usize].to_vec())
+                    }
+                }
+                _ => DataType::EmptyList,
+            },
+            None => DataType::EmptyList,
+        }
+    }
+}
+
+pub fn lrange(input_seq: &[DataType], mem_db: Arc<MemDb>) -> Result<DataType> {
     let key = match &input_seq[1] {
         DataType::BulkString(bs) => bs,
         _ => bail!("wrong key value type"),
     };
 
-    let map = mem_db.lock().unwrap();
+    let map = mem_db.map.lock().unwrap();
     let vals = match map.get(key) {
         Some(e) => match e {
             DataType::List(l) => {

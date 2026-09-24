@@ -1,5 +1,7 @@
-use crate::{cmd::MemDb, expiry::ExpDb, read::DataType};
+use std::sync::Arc;
 
-pub fn ping(_input_seq: &[DataType], _mem_db: MemDb, _exp_db: ExpDb) -> DataType {
+use crate::{cmds::state::MemDb, read::DataType};
+
+pub fn ping(_input_seq: &[DataType], _mem_db: Arc<MemDb>) -> DataType {
     DataType::SimpleStr("PONG".to_string())
 }

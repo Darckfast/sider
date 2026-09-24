@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use crate::read::DataType;
 
 const SEP: &'static str = "\r\n";
@@ -14,6 +16,12 @@ pub fn serialize_resp(ds: DataType) -> String {
         }
         DataType::Int(v) => {
             format!(":{v}{SEP}")
+        }
+        DataType::NullArray => {
+            format!("*-1\r\n")
+        }
+        DataType::EmptyList => {
+            format!("*0\r\n")
         }
         DataType::List(items) => {
             let mut serial = format!("*{}{SEP}", items.len());
