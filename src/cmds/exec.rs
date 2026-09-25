@@ -6,15 +6,15 @@ use crate::{
 };
 use anyhow::{Result, bail};
 
-pub fn exec(input_seq: &[DataType], mem_db: Arc<MemDb>) -> Result<DataType> {
+pub async fn exec(input_seq: &[DataType], mem_db: Arc<MemDb>) -> Result<DataType> {
     let cmd = input_seq
         .first()
         .ok_or(anyhow::Error::msg("RESP data is empty"))?;
     match cmd {
         DataType::BulkString(bs) => {
             let data = match bs.to_uppercase().as_str() {
-                "ECHO" => cmds::echo::echo(input_seq, mem_db),
-                "PING" => cmds::ping::ping(input_seq, mem_db),
+                "ECHO" => cmds::echo::echo(input_seq),
+                "PING" => cmds::ping::ping(),
                 "SET" => cmds::set::set(input_seq, mem_db)?,
                 "GET" => cmds::get::get(input_seq, mem_db)?,
                 "RPUSH" => cmds::rpush::rpush(input_seq, mem_db)?,
@@ -22,6 +22,7 @@ pub fn exec(input_seq: &[DataType], mem_db: Arc<MemDb>) -> Result<DataType> {
                 "LRANGE" => cmds::lrange::lrange(input_seq, mem_db)?,
                 "LLEN" => cmds::llen::llen(input_seq, mem_db)?,
                 "LPOP" => cmds::lpop::lpop(input_seq, mem_db)?,
+                "BLPOP" => cmds::blpop::blpop(input_seq, mem_db).await?,
                 cmd => {
                     dbg!(input_seq);
                     bail!("command {cmd} not supported")

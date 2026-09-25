@@ -7,6 +7,7 @@ pub enum DataType {
     SimpleStr(String),
     BulkString(String),
     Int(i64),
+    UInt(u64),
     NullStr,
     NullArray,
     // Error(String),

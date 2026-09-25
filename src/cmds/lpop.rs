@@ -9,6 +9,7 @@ impl MemDb {
 
         if let Some(val) = map.get_mut(key) {
             let el = match val {
+                DataType::List(list) if list.len() == 0 => None,
                 DataType::List(list) if let Some(num) = total => {
                     Some(DataType::List(list.split_off(list.len() - num)))
                 }
@@ -36,4 +37,51 @@ pub fn lpop(input_seq: &[DataType], mem_db: Arc<MemDb>) -> Result<DataType> {
     };
 
     Ok(mem_db.lpop(key, total))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{cmds::state::MemDb, read::DataType};
+
+    #[test]
+    fn pop_element() {
+        let db = MemDb::new();
+
+        db.set(
+            "test",
+            DataType::List(vec![DataType::Int(1), DataType::Int(2), DataType::Int(3)]),
+            None,
+        );
+
+        let val = db.lpop("test", Some(1));
+
+        assert_eq!(val, DataType::List(vec![DataType::Int(3)]));
+
+        let remaining = db.get("test");
+
+        assert_eq!(
+            remaining,
+            DataType::List(vec![DataType::Int(1), DataType::Int(2)])
+        )
+    }
+
+    #[test]
+    fn pop_non_existing_element() {
+        let db = MemDb::new();
+
+        db.set("test", DataType::List(vec![]), None);
+
+        let val = db.lpop("test", Some(1));
+
+        assert_eq!(val, DataType::NullStr)
+    }
+
+    #[test]
+    fn pop_non_existing_list() {
+        let db = MemDb::new();
+
+        let val = db.lpop("test", None);
+
+        assert_eq!(val, DataType::NullStr)
+    }
 }

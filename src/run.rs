@@ -25,7 +25,7 @@ pub async fn listen() {
         tokio::spawn(async move {
             let (reader, mut writer) = socket.split();
             match read_stream(reader).await {
-                Ok(cmd) => match cmds::exec::exec(&cmd, mem_db_b) {
+                Ok(cmd) => match cmds::exec::exec(&cmd, mem_db_b).await {
                     Ok(results) => {
                         let data = serialize_resp(results);
                         if let Err(e) = writer.write_all(data.as_bytes()).await {

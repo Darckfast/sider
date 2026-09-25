@@ -50,6 +50,35 @@ mod tests {
 
         let len = state.lpush("test-1", &mut [DataType::Int(1), DataType::Int(2)]);
 
-        assert_eq!(len, DataType::Int(2))
+        assert_eq!(len, DataType::Int(2));
+
+        let val = state.get("test-1");
+
+        assert_eq!(
+            val,
+            DataType::List(vec![DataType::Int(2), DataType::Int(1),])
+        )
+    }
+
+    #[test]
+    fn append_element() {
+        let s = MemDb::new();
+
+        let _ = s.lpush("test-1", &mut [DataType::Int(1), DataType::Int(2)]);
+        let len = s.lpush("test-1", &mut [DataType::Int(3), DataType::Int(4)]);
+
+        assert_eq!(len, DataType::Int(4));
+
+        let val = s.get("test-1");
+
+        assert_eq!(
+            val,
+            DataType::List(vec![
+                DataType::Int(4),
+                DataType::Int(3),
+                DataType::Int(2),
+                DataType::Int(1),
+            ])
+        )
     }
 }

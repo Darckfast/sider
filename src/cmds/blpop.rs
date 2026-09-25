@@ -14,7 +14,7 @@ impl MemDb {
                     match timeout(Duration::from_secs(time_arg), self.wait_for(key)).await {
                         Ok(_) => self.lpop(key, None),
                         Err(e) => {
-                            eprintln!("Timeout exceeded {e}");
+                            eprintln!("Timeout exceeded {time_arg}s {e}");
                             DataType::NullArray
                         }
                     }
@@ -38,4 +38,41 @@ pub async fn blpop(input_seq: &[DataType], mem_db: Arc<MemDb>) -> Result<DataTyp
     };
 
     Ok(mem_db.blpop(key, time_arg).await)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{sync::Arc, time::Duration};
+
+    use tokio::time::sleep;
+
+    use crate::{cmds::state::MemDb, read::DataType};
+
+    #[tokio::test]
+    async fn wait_for_element_and_timeout() {
+        let db = MemDb::new();
+
+        db.set("test", DataType::List(vec![]), None);
+
+        let val = db.blpop("test", 1).await;
+
+        assert_eq!(val, DataType::NullArray)
+    }
+
+    #[tokio::test]
+    async fn pop_element() {
+        let db = Arc::new(MemDb::new());
+
+        db.set("test", DataType::List(vec![]), None);
+
+        let db_1 = Arc::clone(&db);
+        tokio::spawn(async move {
+            sleep(Duration::from_millis(10)).await;
+            db_1.rpush("test", &[DataType::Int(1), DataType::Int(2)])
+        });
+
+        let val = db.blpop("test", 1).await;
+
+        assert_eq!(val, DataType::Int(2))
+    }
 }

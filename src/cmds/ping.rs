@@ -1,7 +1,17 @@
-use std::sync::Arc;
+use crate::read::DataType;
 
-use crate::{cmds::state::MemDb, read::DataType};
-
-pub fn ping(_input_seq: &[DataType], _mem_db: Arc<MemDb>) -> DataType {
+pub fn ping() -> DataType {
     DataType::SimpleStr("PONG".to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{cmds::ping, read::DataType};
+
+    #[test]
+    fn pong() {
+        let val = ping::ping();
+
+        assert_eq!(val, DataType::SimpleStr("PONG".to_string()))
+    }
 }

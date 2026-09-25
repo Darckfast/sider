@@ -17,6 +17,9 @@ pub fn serialize_resp(ds: DataType) -> String {
         DataType::Int(v) => {
             format!(":{v}{SEP}")
         }
+        DataType::UInt(v) => {
+            format!(":{v}{SEP}")
+        }
         DataType::NullArray => {
             format!("*-1\r\n")
         }

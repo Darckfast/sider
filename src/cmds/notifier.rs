@@ -14,13 +14,17 @@ impl MemDb {
             .clone()
     }
 
-    pub async fn wait_for(&self, key: &str) -> DataType {
+    pub async fn wait_for(&self, key: &str) {
         let notifier = self.notify_for(key);
         loop {
             {
                 let map = self.map.lock().unwrap();
                 if let Some(v) = map.get(key) {
-                    return v.clone();
+                    match v {
+                        DataType::List(list) if list.len() > 0 => return,
+                        _ => (),
+                    }
+                    // return v.clone();
                 }
             }
 
