@@ -8,6 +8,7 @@ mod cmds {
     pub mod exec;
     mod expiry;
     mod get;
+    mod get_type;
     mod llen;
     mod lpop;
     mod lpush;

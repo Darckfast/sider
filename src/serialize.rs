@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use crate::read::DataType;
 
 const SEP: &'static str = "\r\n";

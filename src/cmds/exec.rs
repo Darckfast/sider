@@ -23,6 +23,7 @@ pub async fn exec(input_seq: &[DataType], mem_db: Arc<MemDb>) -> Result<DataType
                 "LLEN" => cmds::llen::llen(input_seq, mem_db)?,
                 "LPOP" => cmds::lpop::lpop(input_seq, mem_db)?,
                 "BLPOP" => cmds::blpop::blpop(input_seq, mem_db).await?,
+                "TYPE" => cmds::get_type::get_type(input_seq, mem_db)?,
                 cmd => {
                     dbg!(input_seq);
                     bail!("command {cmd} not supported")
