@@ -7,10 +7,12 @@ use crate::{cmds::state::MemDb, read::DataType};
 impl MemDb {
     fn get_type(&self, key: &str) -> DataType {
         let val = match self.get(key) {
-            DataType::BulkString(_) => "string".to_string(),
-            DataType::NullStr => "none".to_string(),
-            _ => "unknown".to_string(),
-        };
+            DataType::BulkString(_) => "string",
+            DataType::Stream(_) => "stream",
+            DataType::NullStr => "none",
+            _ => "unknown",
+        }
+        .to_string();
 
         DataType::SimpleStr(val)
     }

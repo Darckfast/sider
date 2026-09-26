@@ -32,6 +32,12 @@ pub fn serialize_resp(ds: DataType) -> String {
 
             serial
         }
+        DataType::Stream(_) => {
+            format!("")
+        }
+        DataType::Error(e) => {
+            format!("-{e}{SEP}")
+        }
     };
 
     rs += &s;

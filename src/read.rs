@@ -1,17 +1,47 @@
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, BufReader};
 
 use anyhow::Result;
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ID {
+    pub ms: u128,
+    pub seq: u8,
+}
+
+impl Display for ID {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}-{}", self.ms, self.seq)
+    }
+}
+
+impl ID {
+    pub fn new() -> Self {
+        let ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        ID { ms, seq: 0 }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataType {
     SimpleStr(String),
     BulkString(String),
+    Stream(Vec<(ID, HashMap<String, DataType>)>),
     Int(i64),
     UInt(u64),
     NullStr,
     NullArray,
-    // Error(String),
-    List(Vec<DataType>),
+    Error(String),
+    List(Vec<Self>),
     EmptyList,
 }
 

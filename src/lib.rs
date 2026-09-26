@@ -18,4 +18,5 @@ mod cmds {
     mod rpush;
     mod set;
     pub mod state;
+    mod xadd;
 }
