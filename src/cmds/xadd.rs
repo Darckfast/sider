@@ -9,31 +9,63 @@ impl MemDb {
     fn xadd(&self, key: &str, args: &[DataType]) -> DataType {
         let mut db = self.map.lock().unwrap();
 
+        let val = db
+            .entry(key.to_string())
+            .or_insert(DataType::Stream(Vec::new()));
+
         let id = match args.first() {
             Some(arg) => match arg {
                 DataType::BulkString(bs) => {
                     let mut parts = bs.split("-");
                     let (ms, seq) = (parts.next(), parts.next());
 
-                    if let Some(ms) = ms
-                        && let Some(seq) = seq
-                    {
-                        let ms: u128 = ms.parse().unwrap_or(0);
-                        let seq: u8 = seq.parse().unwrap_or(0);
+                    match ms {
+                        Some(ms)
+                            if let Some(seq) = seq
+                                && ms != "*"
+                                && seq != "*" =>
+                        {
+                            let ms: u128 = ms.parse().unwrap_or(0);
+                            let seq: u8 = seq.parse().unwrap_or(0);
 
-                        ID { ms, seq }
-                    } else {
-                        ID::new()
+                            if ms == 0 && seq == 0 {
+                                return DataType::Error(
+                                    "ERR The ID specified in XADD must be greater than 0-0"
+                                        .to_string(),
+                                );
+                            }
+                            ID { ms, seq }
+                        }
+                        Some(ms)
+                            if let Some(seq) = seq
+                                && seq == "*"
+                                && ms != "*" =>
+                        {
+                            let ms: u128 = ms.parse().unwrap_or(0);
+
+                            let mut id = ID { ms, seq: 0 };
+
+                            if ms == 0 {
+                                id.seq = 1
+                            }
+
+                            if let DataType::Stream(val) = val {
+                                let exists = val.iter().find(|(aid, _)| aid.ms == id.ms);
+
+                                if let Some((aid, _)) = exists {
+                                    id.seq = aid.seq + 1;
+                                }
+                            }
+
+                            id
+                        }
+                        _ => ID::new(),
                     }
                 }
                 _ => ID::new(),
             },
             None => ID::new(),
         };
-
-        let val = db
-            .entry(key.to_string())
-            .or_insert(DataType::Stream(Vec::new()));
 
         if let DataType::Stream(val) = val {
             if let Some((last_id, _)) = val.last()
@@ -118,9 +150,41 @@ mod tests {
         assert_eq!(
             err,
             DataType::Error(
-                "The ID specified in XADD is equal or smaller than the target stream top item"
+                "ERR The ID specified in XADD is equal or smaller than the target stream top item"
                     .to_string()
             )
         )
+    }
+
+    #[test]
+    fn create_stream_gen_id_with_star_seq() {
+        let db = MemDb::new();
+
+        let id = db.xadd(
+            "test",
+            &[
+                DataType::BulkString("1-*".to_string()),
+                DataType::BulkString("a".to_string()),
+                DataType::BulkString("true".to_string()),
+            ],
+        );
+
+        assert_eq!(id, DataType::SimpleStr("1-0".to_string()))
+    }
+
+    #[test]
+    fn create_stream_gen_id_with_star() {
+        let db = MemDb::new();
+
+        let id = db.xadd(
+            "test",
+            &[
+                DataType::BulkString("*".to_string()),
+                DataType::BulkString("a".to_string()),
+                DataType::BulkString("true".to_string()),
+            ],
+        );
+
+        assert_ne!(id, DataType::SimpleStr("1-0".to_string()))
     }
 }
