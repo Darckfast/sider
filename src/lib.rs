@@ -19,4 +19,5 @@ mod cmds {
     mod set;
     pub mod state;
     mod xadd;
+    mod xrange;
 }

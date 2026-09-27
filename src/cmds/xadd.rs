@@ -6,7 +6,7 @@ use crate::{
 };
 
 impl MemDb {
-    fn xadd(&self, key: &str, args: &[DataType]) -> DataType {
+    pub fn xadd(&self, key: &str, args: &[DataType]) -> DataType {
         let mut db = self.map.lock().unwrap();
 
         let val = db
@@ -42,7 +42,6 @@ impl MemDb {
                                 && ms != "*" =>
                         {
                             let ms: u128 = ms.parse().unwrap_or(0);
-
                             let mut id = ID { ms, seq: 0 };
 
                             if ms == 0 {
@@ -79,7 +78,7 @@ impl MemDb {
 
             let mut submap = HashMap::new();
 
-            for arg in args.chunks(2) {
+            for arg in args[1..].chunks(2) {
                 match arg {
                     [key, value] => {
                         let key = match key {
@@ -107,7 +106,12 @@ pub fn xadd(key: &str, args: &[DataType], db: Arc<MemDb>) -> DataType {
 
 #[cfg(test)]
 mod tests {
-    use crate::{cmds::state::MemDb, read::DataType};
+    use std::collections::HashMap;
+
+    use crate::{
+        cmds::state::MemDb,
+        read::{DataType, ID},
+    };
 
     #[test]
     fn add_stream() {
@@ -122,7 +126,13 @@ mod tests {
             ],
         );
 
-        assert_eq!(id, DataType::SimpleStr("1-1".to_string()))
+        assert_eq!(id, DataType::SimpleStr("1-1".to_string()));
+        let val = db.get("test");
+
+        let mut expected: HashMap<String, DataType> = HashMap::new();
+        expected.insert("a".to_string(), DataType::BulkString("true".to_string()));
+        let id = ID { ms: 1, seq: 1 };
+        assert_eq!(val, DataType::Stream(vec![(id, expected)]));
     }
 
     #[test]
