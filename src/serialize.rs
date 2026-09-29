@@ -37,7 +37,7 @@ pub fn serialize_resp(ds: DataType) -> String {
                 serial = format!(
                     "{serial}*2{SEP}{}*{}{SEP}",
                     serialize_resp(DataType::BulkString(id.to_string())),
-                    map.len(),
+                    map.len() * 2,
                 );
 
                 for (key, value) in map {
@@ -116,7 +116,7 @@ mod tests {
 
         assert_eq!(
             &serial_str,
-            "*1\r\n*2\r\n$3\r\n1-0\r\n*1\r\n$4\r\ntest\r\n$1\r\n1\r\n"
+            "*1\r\n*2\r\n$3\r\n1-0\r\n*2\r\n$4\r\ntest\r\n$1\r\n1\r\n"
         );
     }
 }

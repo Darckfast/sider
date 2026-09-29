@@ -10,6 +10,7 @@ impl MemDb {
                 .filter(|i| i.0.ms >= start && i.0.ms <= end)
                 .collect();
 
+            dbg!(&results);
             DataType::Stream(results)
         } else {
             DataType::NullArray
