@@ -3,14 +3,25 @@ use std::sync::Arc;
 use crate::{cmds::state::MemDb, read::DataType};
 
 impl MemDb {
-    fn xrange(&self, key: &str, start: u128, end: u128) -> DataType {
+    fn xrange(&self, key: &str, start: &str, end: &str) -> DataType {
         if let DataType::Stream(s) = self.get(key) {
+            let start: u128 = match start {
+                "-" => 0,
+                o => o.parse().unwrap_or(0),
+            };
+            let end: u128 = match end {
+                "+" => match s.last() {
+                    Some(v) => v.0.ms,
+                    None => 0,
+                },
+                o => o.parse().unwrap_or(0),
+            };
+
             let results = s
                 .into_iter()
                 .filter(|i| i.0.ms >= start && i.0.ms <= end)
                 .collect();
 
-            dbg!(&results);
             DataType::Stream(results)
         } else {
             DataType::NullArray
@@ -23,9 +34,6 @@ pub fn xrange(key: &str, args: &[DataType], db: Arc<MemDb>) -> DataType {
     if let (Some(DataType::BulkString(start)), Some(DataType::BulkString(end))) =
         (args.next(), args.next())
     {
-        let start: u128 = start.parse().unwrap_or(0);
-        let end: u128 = end.parse().unwrap_or(0);
-
         db.xrange(key, start, end)
     } else {
         DataType::NullArray
