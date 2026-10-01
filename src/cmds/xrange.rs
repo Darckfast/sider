@@ -70,11 +70,101 @@ mod tests {
             .unwrap()
             .as_millis();
 
-        let val = db.xrange("test", 0, ms);
+        let val = db.xrange("test", "0", &ms.to_string());
 
         let mut expected: HashMap<String, DataType> = HashMap::new();
         expected.insert("a".to_string(), DataType::BulkString("true".to_string()));
         let id = ID { ms: 1, seq: 1 };
         assert_eq!(val, DataType::Stream(vec![(id, expected)]));
+    }
+
+    #[test]
+    fn get_stream_using_plus_operator() {
+        let db = MemDb::new();
+
+        let _ = db.xadd(
+            "test",
+            &[
+                DataType::BulkString("0-1".to_string()),
+                DataType::BulkString("b".to_string()),
+                DataType::BulkString("false".to_string()),
+            ],
+        );
+        let _ = db.xadd(
+            "test",
+            &[
+                DataType::BulkString("1-1".to_string()),
+                DataType::BulkString("a".to_string()),
+                DataType::BulkString("true".to_string()),
+            ],
+        );
+        let _ = db.xadd(
+            "test",
+            &[
+                DataType::BulkString("2-1".to_string()),
+                DataType::BulkString("c".to_string()),
+                DataType::BulkString("null".to_string()),
+            ],
+        );
+
+        let val = db.xrange("test", "1", "+");
+
+        let mut expected: HashMap<String, DataType> = HashMap::new();
+        expected.insert("a".to_string(), DataType::BulkString("true".to_string()));
+        let mut data: Vec<(ID, HashMap<String, DataType>)> = Vec::new();
+
+        data.push((ID { ms: 1, seq: 1 }, expected));
+
+        expected = HashMap::new();
+        expected.insert("c".to_string(), DataType::BulkString("null".to_string()));
+
+        data.push((ID { ms: 2, seq: 1 }, expected));
+
+        assert_eq!(val, DataType::Stream(data));
+    }
+
+    #[test]
+    fn get_stream_using_minus_operator() {
+        let db = MemDb::new();
+
+        let _ = db.xadd(
+            "test",
+            &[
+                DataType::BulkString("0-1".to_string()),
+                DataType::BulkString("b".to_string()),
+                DataType::BulkString("false".to_string()),
+            ],
+        );
+        let _ = db.xadd(
+            "test",
+            &[
+                DataType::BulkString("1-1".to_string()),
+                DataType::BulkString("a".to_string()),
+                DataType::BulkString("true".to_string()),
+            ],
+        );
+        let _ = db.xadd(
+            "test",
+            &[
+                DataType::BulkString("2-1".to_string()),
+                DataType::BulkString("c".to_string()),
+                DataType::BulkString("null".to_string()),
+            ],
+        );
+
+        let val = db.xrange("test", "-", "1");
+
+        let mut expected: HashMap<String, DataType> = HashMap::new();
+        expected.insert("b".to_string(), DataType::BulkString("false".to_string()));
+        let mut data: Vec<(ID, HashMap<String, DataType>)> = Vec::new();
+
+        data.push((ID { ms: 0, seq: 1 }, expected));
+
+        expected = HashMap::new();
+        expected.insert("a".to_string(), DataType::BulkString("true".to_string()));
+
+        data.push((ID { ms: 1, seq: 1 }, expected));
+
+        assert_eq!(val, DataType::Stream(data));
     }
 }
