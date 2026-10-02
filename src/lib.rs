@@ -20,4 +20,5 @@ mod cmds {
     pub mod state;
     mod xadd;
     mod xrange;
+    mod xread;
 }

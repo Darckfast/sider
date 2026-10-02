@@ -1,9 +1,12 @@
 use std::sync::Arc;
 
-use crate::{cmds::state::MemDb, read::DataType};
+use crate::{
+    cmds::state::MemDb,
+    read::{DataType, IDS},
+};
 
 impl MemDb {
-    fn xrange(&self, key: &str, start: &str, end: &str) -> DataType {
+    pub fn xrange(&self, key: &str, start: &str, end: &str) -> DataType {
         if let DataType::Stream(s) = self.get(key) {
             let start: u128 = match start {
                 "-" => 0,
@@ -11,7 +14,10 @@ impl MemDb {
             };
             let end: u128 = match end {
                 "+" => match s.last() {
-                    Some(v) => v.0.ms,
+                    Some(v) => match &v.0 {
+                        IDS::Sequence(seq) => seq.ms,
+                        _ => 0,
+                    },
                     None => 0,
                 },
                 o => o.parse().unwrap_or(0),
@@ -19,7 +25,10 @@ impl MemDb {
 
             let results = s
                 .into_iter()
-                .filter(|i| i.0.ms >= start && i.0.ms <= end)
+                .filter(|i| match &i.0 {
+                    IDS::Sequence(s) => s.ms >= start && s.ms <= end,
+                    _ => false,
+                })
                 .collect();
 
             DataType::Stream(results)
@@ -49,7 +58,7 @@ mod tests {
 
     use crate::{
         cmds::state::MemDb,
-        read::{DataType, ID},
+        read::{DataType, ID, IDS},
     };
 
     #[test]
@@ -75,7 +84,10 @@ mod tests {
         let mut expected: HashMap<String, DataType> = HashMap::new();
         expected.insert("a".to_string(), DataType::BulkString("true".to_string()));
         let id = ID { ms: 1, seq: 1 };
-        assert_eq!(val, DataType::Stream(vec![(id, expected)]));
+        assert_eq!(
+            val,
+            DataType::Stream(vec![(IDS::Sequence(id), DataType::KV(expected))])
+        );
     }
 
     #[test]
@@ -110,15 +122,15 @@ mod tests {
         let val = db.xrange("test", "1", "+");
 
         let mut expected: HashMap<String, DataType> = HashMap::new();
+        let mut data: Vec<(IDS, DataType)> = Vec::new();
         expected.insert("a".to_string(), DataType::BulkString("true".to_string()));
-        let mut data: Vec<(ID, HashMap<String, DataType>)> = Vec::new();
 
-        data.push((ID { ms: 1, seq: 1 }, expected));
+        data.push((IDS::Sequence(ID { ms: 1, seq: 1 }), DataType::KV(expected)));
 
         expected = HashMap::new();
         expected.insert("c".to_string(), DataType::BulkString("null".to_string()));
 
-        data.push((ID { ms: 2, seq: 1 }, expected));
+        data.push((IDS::Sequence(ID { ms: 2, seq: 1 }), DataType::KV(expected)));
 
         assert_eq!(val, DataType::Stream(data));
     }
@@ -155,15 +167,15 @@ mod tests {
         let val = db.xrange("test", "-", "1");
 
         let mut expected: HashMap<String, DataType> = HashMap::new();
+        let mut data: Vec<(IDS, DataType)> = Vec::new();
         expected.insert("b".to_string(), DataType::BulkString("false".to_string()));
-        let mut data: Vec<(ID, HashMap<String, DataType>)> = Vec::new();
 
-        data.push((ID { ms: 0, seq: 1 }, expected));
+        data.push((IDS::Sequence(ID { ms: 0, seq: 1 }), DataType::KV(expected)));
 
         expected = HashMap::new();
         expected.insert("a".to_string(), DataType::BulkString("true".to_string()));
 
-        data.push((ID { ms: 1, seq: 1 }, expected));
+        data.push((IDS::Sequence(ID { ms: 1, seq: 1 }), DataType::KV(expected)));
 
         assert_eq!(val, DataType::Stream(data));
     }

@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     cmds::state::MemDb,
-    read::{DataType, ID},
+    read::{DataType, ID, IDS},
 };
 
 impl MemDb {
@@ -49,9 +49,12 @@ impl MemDb {
                             }
 
                             if let DataType::Stream(val) = val {
-                                let exists = val.iter().find(|(aid, _)| aid.ms == id.ms);
+                                let exists = val.iter().find(|(aid, _)| match aid {
+                                    IDS::Sequence(aid) => aid.ms == id.ms,
+                                    _ => false,
+                                });
 
-                                if let Some((aid, _)) = exists {
+                                if let Some((IDS::Sequence(aid), _)) = exists {
                                     id.seq = aid.seq + 1;
                                 }
                             }
@@ -67,7 +70,7 @@ impl MemDb {
         };
 
         if let DataType::Stream(val) = val {
-            if let Some((last_id, _)) = val.last()
+            if let Some((IDS::Sequence(last_id), _)) = val.last()
                 && last_id.ms >= id.ms
             {
                 return DataType::Error(
@@ -93,7 +96,7 @@ impl MemDb {
                 }
             }
 
-            val.push((id.clone(), submap));
+            val.push((IDS::Sequence(id.clone()), DataType::KV(submap)));
         }
 
         DataType::SimpleStr(format!("{id}"))
@@ -110,7 +113,7 @@ mod tests {
 
     use crate::{
         cmds::state::MemDb,
-        read::{DataType, ID},
+        read::{DataType, ID, IDS},
     };
 
     #[test]
@@ -131,8 +134,8 @@ mod tests {
 
         let mut expected: HashMap<String, DataType> = HashMap::new();
         expected.insert("a".to_string(), DataType::BulkString("true".to_string()));
-        let id = ID { ms: 1, seq: 1 };
-        assert_eq!(val, DataType::Stream(vec![(id, expected)]));
+        let id = IDS::Sequence(ID { ms: 1, seq: 1 });
+        assert_eq!(val, DataType::Stream(vec![(id, DataType::KV(expected))]));
     }
 
     #[test]

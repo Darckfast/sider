@@ -31,22 +31,26 @@ pub fn serialize_resp(ds: DataType) -> String {
 
             serial
         }
+        DataType::KV(map) => {
+            let mut serial = format!("*{}{SEP}", map.len() * 2);
+            for (key, value) in map {
+                serial = format!(
+                    "{serial}{}{}",
+                    serialize_resp(DataType::BulkString(key)),
+                    serialize_resp(value)
+                );
+            }
+
+            serial
+        }
         DataType::Stream(stream) => {
             let mut serial = format!("*{}{SEP}", stream.len());
-            for (id, map) in stream {
+            for (id, value) in stream {
                 serial = format!(
-                    "{serial}*2{SEP}{}*{}{SEP}",
+                    "{serial}*2{SEP}{}{}",
                     serialize_resp(DataType::BulkString(id.to_string())),
-                    map.len() * 2,
+                    serialize_resp(value)
                 );
-
-                for (key, value) in map {
-                    serial = format!(
-                        "{serial}{}{}",
-                        serialize_resp(DataType::BulkString(key)),
-                        serialize_resp(value)
-                    );
-                }
             }
 
             serial
@@ -62,7 +66,7 @@ mod tests {
     use std::{collections::HashMap, i64};
 
     use crate::{
-        read::{DataType, ID},
+        read::{DataType, ID, IDS},
         serialize::serialize_resp,
     };
 
@@ -104,11 +108,11 @@ mod tests {
 
     #[test]
     fn stream() {
-        let mut data: Vec<(ID, HashMap<String, DataType>)> = Vec::new();
+        let mut data: Vec<(IDS, DataType)> = Vec::new();
         let mut map: HashMap<String, DataType> = HashMap::new();
 
         map.insert("test".to_string(), DataType::BulkString("1".to_string()));
-        data.push((ID { ms: 1, seq: 0 }, map));
+        data.push((IDS::Sequence(ID { ms: 1, seq: 0 }), DataType::KV(map)));
 
         let stream = DataType::Stream(data);
 
@@ -117,6 +121,35 @@ mod tests {
         assert_eq!(
             &serial_str,
             "*1\r\n*2\r\n$3\r\n1-0\r\n*2\r\n$4\r\ntest\r\n$1\r\n1\r\n"
+        );
+    }
+
+    #[test]
+    fn keyd() {
+        let mut data: Vec<(IDS, DataType)> = Vec::new();
+        let mut map: HashMap<String, DataType> = HashMap::new();
+
+        map.insert(
+            "temperature".to_string(),
+            DataType::BulkString("37".to_string()),
+        );
+        data.push((
+            IDS::Sequence(ID {
+                ms: 1526985054079,
+                seq: 0,
+            }),
+            DataType::KV(map),
+        ));
+
+        let stream = DataType::Stream(data);
+        let serial_str = serialize_resp(DataType::Stream(vec![(
+            IDS::Str("some_key".to_string()),
+            stream,
+        )]));
+
+        assert_eq!(
+            &serial_str,
+            "*1\r\n*2\r\n$8\r\nsome_key\r\n*1\r\n*2\r\n$15\r\n1526985054079-0\r\n*2\r\n$11\r\ntemperature\r\n$2\r\n37\r\n"
         );
     }
 }

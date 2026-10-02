@@ -9,6 +9,21 @@ use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, BufReader};
 use anyhow::Result;
 
 #[derive(Clone, Debug, PartialEq)]
+pub enum IDS {
+    Sequence(ID),
+    Str(String),
+}
+
+impl Display for IDS {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IDS::Sequence(s) => write!(f, "{}-{}", s.ms, s.seq),
+            IDS::Str(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct ID {
     pub ms: u128,
     pub seq: u8,
@@ -35,7 +50,8 @@ impl ID {
 pub enum DataType {
     SimpleStr(String),
     BulkString(String),
-    Stream(Vec<(ID, HashMap<String, DataType>)>),
+    KV(HashMap<String, Self>),
+    Stream(Vec<(IDS, Self)>),
     Int(i64),
     UInt(u64),
     NullStr,
