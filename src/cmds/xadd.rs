@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     cmds::state::MemDb,
-    read::{DataType, ID, IDS},
+    read::{DataType, ID, Seq},
 };
 
 impl MemDb {
@@ -34,7 +34,7 @@ impl MemDb {
                                         .to_string(),
                                 );
                             }
-                            ID { ms, seq }
+                            Seq { ms, seq }
                         }
                         Some(ms)
                             if let Some(seq) = seq
@@ -42,7 +42,7 @@ impl MemDb {
                                 && ms != "*" =>
                         {
                             let ms: u128 = ms.parse().unwrap_or(0);
-                            let mut id = ID { ms, seq: 0 };
+                            let mut id = Seq { ms, seq: 0 };
 
                             if ms == 0 {
                                 id.seq = 1
@@ -50,27 +50,27 @@ impl MemDb {
 
                             if let DataType::Stream(val) = val {
                                 let exists = val.iter().find(|(aid, _)| match aid {
-                                    IDS::Sequence(aid) => aid.ms == id.ms,
+                                    ID::Sequence(aid) => aid.ms == id.ms,
                                     _ => false,
                                 });
 
-                                if let Some((IDS::Sequence(aid), _)) = exists {
+                                if let Some((ID::Sequence(aid), _)) = exists {
                                     id.seq = aid.seq + 1;
                                 }
                             }
 
                             id
                         }
-                        _ => ID::new(),
+                        _ => Seq::new(),
                     }
                 }
-                _ => ID::new(),
+                _ => Seq::new(),
             },
-            None => ID::new(),
+            None => Seq::new(),
         };
 
         if let DataType::Stream(val) = val {
-            if let Some((IDS::Sequence(last_id), _)) = val.last()
+            if let Some((ID::Sequence(last_id), _)) = val.last()
                 && last_id.ms >= id.ms
             {
                 return DataType::Error(
@@ -96,7 +96,7 @@ impl MemDb {
                 }
             }
 
-            val.push((IDS::Sequence(id.clone()), DataType::KV(submap)));
+            val.push((ID::Sequence(id.clone()), DataType::KV(submap)));
         }
 
         DataType::SimpleStr(format!("{id}"))
@@ -109,11 +109,9 @@ pub fn xadd(key: &str, args: &[DataType], db: Arc<MemDb>) -> DataType {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use crate::{
         cmds::state::MemDb,
-        read::{DataType, ID, IDS},
+        read::{DataType, ID, Seq},
     };
 
     #[test]
@@ -129,13 +127,18 @@ mod tests {
             ],
         );
 
-        assert_eq!(id, DataType::SimpleStr("1-1".to_string()));
-        let val = db.get("test");
+        let result = db.get("test");
 
-        let mut expected: HashMap<String, DataType> = HashMap::new();
-        expected.insert("a".to_string(), DataType::BulkString("true".to_string()));
-        let id = IDS::Sequence(ID { ms: 1, seq: 1 });
-        assert_eq!(val, DataType::Stream(vec![(id, DataType::KV(expected))]));
+        assert_eq!(id, DataType::SimpleStr("1-1".to_string()));
+        assert_eq!(
+            result,
+            DataType::Stream(vec![(
+                ID::Sequence(Seq { ms: 1, seq: 1 }),
+                DataType::KV(hashmap! {
+                    "a".to_string() => DataType::BulkString("true".to_string())
+                })
+            )])
+        );
     }
 
     #[test]

@@ -9,49 +9,63 @@ use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, BufReader};
 use anyhow::Result;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum IDS {
-    Sequence(ID),
+pub enum ID {
+    Sequence(Seq),
     Str(String),
 }
 
-impl Display for IDS {
+impl Display for ID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            IDS::Sequence(s) => write!(f, "{}-{}", s.ms, s.seq),
-            IDS::Str(s) => write!(f, "{}", s),
+            ID::Sequence(s) => write!(f, "{}-{}", s.ms, s.seq),
+            ID::Str(s) => write!(f, "{}", s),
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ID {
+pub struct Seq {
     pub ms: u128,
     pub seq: u8,
 }
 
-impl Display for ID {
+impl Display for Seq {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}-{}", self.ms, self.seq)
     }
 }
 
-impl ID {
+impl Seq {
     pub fn new() -> Self {
         let ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_millis();
 
-        ID { ms, seq: 0 }
+        Self { ms, seq: 0 }
+    }
+
+    pub fn from_id_str(s: &str) -> Self {
+        if let Some((first, second)) = s.split_once("-") {
+            let ms: u128 = first.parse().unwrap_or(0);
+            let seq: u8 = second.parse().unwrap_or(0);
+
+            Self { ms, seq }
+        } else {
+            eprintln!("ERR: {s} is not the expected id - auto generating");
+            Self::new()
+        }
     }
 }
+
+pub type KV = HashMap<String, DataType>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DataType {
     SimpleStr(String),
     BulkString(String),
-    KV(HashMap<String, Self>),
-    Stream(Vec<(IDS, Self)>),
+    KV(KV),
+    Stream(Vec<(ID, Self)>),
     Int(i64),
     UInt(u64),
     NullStr,

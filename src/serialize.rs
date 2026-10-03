@@ -66,7 +66,7 @@ mod tests {
     use std::{collections::HashMap, i64};
 
     use crate::{
-        read::{DataType, ID, IDS},
+        read::{DataType, ID, Seq},
         serialize::serialize_resp,
     };
 
@@ -108,11 +108,11 @@ mod tests {
 
     #[test]
     fn stream() {
-        let mut data: Vec<(IDS, DataType)> = Vec::new();
+        let mut data: Vec<(ID, DataType)> = Vec::new();
         let mut map: HashMap<String, DataType> = HashMap::new();
 
         map.insert("test".to_string(), DataType::BulkString("1".to_string()));
-        data.push((IDS::Sequence(ID { ms: 1, seq: 0 }), DataType::KV(map)));
+        data.push((ID::Sequence(Seq { ms: 1, seq: 0 }), DataType::KV(map)));
 
         let stream = DataType::Stream(data);
 
@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn keyd() {
-        let mut data: Vec<(IDS, DataType)> = Vec::new();
+        let mut data: Vec<(ID, DataType)> = Vec::new();
         let mut map: HashMap<String, DataType> = HashMap::new();
 
         map.insert(
@@ -134,7 +134,7 @@ mod tests {
             DataType::BulkString("37".to_string()),
         );
         data.push((
-            IDS::Sequence(ID {
+            ID::Sequence(Seq {
                 ms: 1526985054079,
                 seq: 0,
             }),
@@ -143,7 +143,7 @@ mod tests {
 
         let stream = DataType::Stream(data);
         let serial_str = serialize_resp(DataType::Stream(vec![(
-            IDS::Str("some_key".to_string()),
+            ID::Str("some_key".to_string()),
             stream,
         )]));
 

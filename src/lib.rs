@@ -1,7 +1,8 @@
+#[macro_use]
+mod hashmap;
 mod read;
 pub mod run;
 mod serialize;
-
 mod cmds {
     mod blpop;
     mod echo;
