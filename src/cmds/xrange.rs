@@ -6,7 +6,7 @@ use crate::{
 };
 
 impl MemDb {
-    pub fn xrange(&self, key: &str, start: &str, end: &str) -> DataType {
+    fn xrange(&self, key: &str, start: &str, end: &str) -> DataType {
         if let DataType::Stream(s) = self.get(key) {
             let start: u128 = match start {
                 "-" => 0,

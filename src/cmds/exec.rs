@@ -34,7 +34,7 @@ pub async fn exec(input_seq: &[DataType], mem_db: Arc<MemDb>) -> Result<DataType
                 "TYPE" => cmds::get_type::get_type(input_seq, mem_db)?,
                 "XADD" => cmds::xadd::xadd(key, args, mem_db),
                 "XRANGE" => cmds::xrange::xrange(key, args, mem_db),
-                "XREAD" => cmds::xread::xread(key, args, mem_db),
+                "XREAD" => cmds::xread::xread(key, args, mem_db).await,
                 cmd => {
                     dbg!(input_seq);
                     bail!("command {cmd} not supported")

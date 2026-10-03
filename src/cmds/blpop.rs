@@ -11,7 +11,7 @@ impl MemDb {
                 if list.len() > 0 {
                     self.lpop(key, None)
                 } else {
-                    match timeout(Duration::from_secs(time_arg), self.wait_for(key)).await {
+                    match timeout(Duration::from_secs(time_arg), self.wait_for(key, None)).await {
                         Ok(_) => self.lpop(key, None),
                         Err(e) => {
                             eprintln!("Timeout exceeded {time_arg}s {e}");
